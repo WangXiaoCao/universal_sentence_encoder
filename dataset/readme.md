@@ -26,19 +26,21 @@ with – and keeping the remaining ones results in <b>549,367</b> pairs for trai
 ### [Multi-Genre NLI Corpus, or MultiNLI](https://repeval2017.github.io/shared/)
 
 <p align="justify">
-The task dataset (called the Multi-Genre NLI Corpus, or MultiNLI) consist of 393k training examples drawn from five genres of text, and 40k test and development examples drawn from those same five genres, as well as five more. Data collection for the task dataset is closely modeled as SNLI.
+The task dataset (called the Multi-Genre NLI Corpus, or MultiNLI) consist of <b>393,000</b> training examples drawn from five genres of text, and <b>40,000</b> test and development examples drawn from those same five genres, as well as five more. Data collection for the task dataset is closely modeled as SNLI.
 <p align="justify">
 
 ### [Quora Question Pairs](https://data.quora.com/First-Quora-Dataset-Release-Question-Pairs)
 
 <p align="justify">
-Quora question dataset consists of over 400,000 lines of potential question duplicate pairs. Each line contains IDs for each question in the pair, the full text for each question, and a binary value that indicates whether the line truly contains a duplicate pair. Here are a few sample lines of the dataset:
+Quora question dataset consists of over <b>400,000</b> lines of potential question duplicate pairs. Each line contains IDs for each question in the pair, the full text for each question, and a binary value that indicates whether the line truly contains a duplicate pair. Here are a few sample lines of the dataset:
 <p align="justify">
 
 <p align="center">
 <br>
 <img src="https://qph.ec.quoracdn.net/main-qimg-ea50c7a005eb7750af0b53b07c8caa60" width="90%"/>
 <p align="center">
+
+Quora dataset split from the paper - [BiMPM: Bilateral Multi-Perspective Matching for Natural Language Sentences](https://github.com/zhiguowang/BiMPM) can be found [here](https://drive.google.com/file/d/0B0PlTAo--BnaQWlsZl9FZ3l1c28/view).
 
 ### [CQADupStack](http://nlp.cis.unimelb.edu.au/resources/cqadupstack/)
 
