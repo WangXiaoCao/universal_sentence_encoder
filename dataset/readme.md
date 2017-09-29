@@ -4,7 +4,7 @@
 ### [Stanford Natural Language Inference (SNLI) Corpus](http://nlp.stanford.edu/projects/snli/)
 
 <p align="justify">
-<b>Description</b>: The SNLI corpus (version 1.0) is a collection of 570k human-written English sentence pairs manually labeled for 
+The SNLI corpus (version 1.0) is a collection of 570k human-written English sentence pairs manually labeled for 
 balanced classification with the labels entailment, contradiction, and neutral, supporting the task of natural language inference
 (NLI), also known as recognizing textual entailment (RTE).
 <p align="justify">
@@ -32,7 +32,7 @@ The task dataset (called the Multi-Genre NLI Corpus, or MultiNLI) consist of 393
 ### [Quora Question Pairs](https://data.quora.com/First-Quora-Dataset-Release-Question-Pairs)
 
 <p align="justify">
-Description: Quora question dataset consists of over 400,000 lines of potential question duplicate pairs. Each line contains IDs for each question in the pair, the full text for each question, and a binary value that indicates whether the line truly contains a duplicate pair. Here are a few sample lines of the dataset:
+Quora question dataset consists of over 400,000 lines of potential question duplicate pairs. Each line contains IDs for each question in the pair, the full text for each question, and a binary value that indicates whether the line truly contains a duplicate pair. Here are a few sample lines of the dataset:
 <p align="justify">
 
 <p align="center">
