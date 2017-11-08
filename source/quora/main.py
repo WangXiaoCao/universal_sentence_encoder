@@ -30,27 +30,27 @@ if torch.cuda.is_available():
 ###############################################################################
 
 dictionary = data.Dictionary()
-train_corpus = data.Corpus(args.data + 'quora/', 'quora_duplicate_questions_train.tsv', dictionary)
-print('Train set size = ', len(train_corpus.data))
-dev_corpus = data.Corpus(args.data + 'quora/', 'quora_duplicate_questions_dev.tsv', dictionary, True)
-print('Development set size = ', len(dev_corpus.data))
-print('Vocabulary size = ', len(dictionary))
+train_corpus = data.Corpus(args.data + 'quora/', 'train.txt', dictionary)
+print('train set size = ', len(train_corpus.data))
+dev_corpus = data.Corpus(args.data + 'quora/', 'dev.txt', dictionary, True)
+print('development set size = ', len(dev_corpus.data))
+print('vocabulary size = ', len(dictionary))
 
 # save the dictionary object to use during testing
 helper.save_object(dictionary, args.data + 'dictionary.p')
 
-# embeddings_index = helper.load_word_embeddings(args.word_vectors_directory, args.word_vectors_file)
-# helper.save_word_embeddings('../data/', 'glove.840B.300d.quora.dup.txt', embeddings_index, corpus.dictionary.idx2word)
+# embeddings_index = helper.load_word_embeddings(args.word_vectors_directory, args.word_vectors_file, dictionary.word2idx)
+# helper.save_word_embeddings(args.word_vectors_directory, 'glove.840B.300d.quora.txt', embeddings_index)
 
-embeddings_index = helper.load_word_embeddings(args.word_vectors_directory, 'glove.840B.300d.quora.dup.txt')
-print('Number of OOV words = ', len(dictionary) - len(embeddings_index))
+embeddings_index = helper.load_word_embeddings(args.word_vectors_directory, 'glove.840B.300d.quora.txt', dictionary.word2idx)
+print('number of OOV words = ', len(dictionary) - len(embeddings_index))
 
 # ###############################################################################
 # # Build the model
 # ###############################################################################
 
-model = ConvNetEncoder(dictionary, embeddings_index, args)
-# model = QuoraRNN(dictionary, embeddings_index, args, select_method='last')
+# model = ConvNetEncoder(dictionary, embeddings_index, args)
+model = QuoraRNN(dictionary, embeddings_index, args, select_method='max')
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), args.lr)
 best_loss = -1
 

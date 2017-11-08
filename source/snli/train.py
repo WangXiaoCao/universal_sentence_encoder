@@ -6,7 +6,7 @@
 # File Description: This script contains code to train the model.
 ###############################################################################
 
-import time, helper
+import time, helper, torch
 import torch.nn as nn
 
 
@@ -35,23 +35,25 @@ class Train:
                 self.train(train_corpus)
                 # training epoch completes, now do validation
                 print('\nVALIDATING : Epoch ' + str((epoch + 1)))
-                dev_loss = self.validate(dev_corpus)
-                self.dev_losses.append(dev_loss)
-                print('validation loss = %.4f' % dev_loss)
+                # dev_loss = self.validate(dev_corpus)
+                dev_acc = self.validate_in_acc(dev_corpus)
+                self.dev_losses.append(dev_acc)
+                print('validation acc = %.4f' % dev_acc)
                 # save model if dev loss goes down
-                if self.best_dev_loss == -1 or self.best_dev_loss > dev_loss:
-                    self.best_dev_loss = dev_loss
+                if self.best_dev_loss == -1 or self.best_dev_loss < dev_acc:
+                    self.best_dev_loss = dev_acc
                     helper.save_checkpoint({
                         'epoch': (epoch + 1),
                         'state_dict': self.model.state_dict(),
                         'best_loss': self.best_dev_loss,
                         'optimizer': self.optimizer.state_dict(),
                     }, self.config.save_path + 'model_best.pth.tar')
+                    torch.save(self.model, self.config.save_path + 'model.pickle')
                     self.times_no_improvement = 0
                 else:
                     self.times_no_improvement += 1
                     # no improvement in validation loss for last n iterations, so stop training
-                    if self.times_no_improvement == 5:
+                    if self.times_no_improvement == 3:
                         self.stop = True
                 # save the train and development loss plot
                 helper.save_plot(self.train_losses, self.config.save_path, 'training', epoch + 1)
@@ -75,7 +77,7 @@ class Train:
         for batch_no in range(1, num_batches + 1):
             # Clearing out all previous gradient computations.
             self.optimizer.zero_grad()
-            train_sentences1, train_sentences2, train_labels = helper.batch_to_tensors(train_batches[batch_no - 1],
+            train_sentences1, sent_len1, train_sentences2, sent_len2, train_labels = helper.batch_to_tensors(train_batches[batch_no - 1],
                                                                                        self.dictionary)
             if self.config.cuda:
                 train_sentences1 = train_sentences1.cuda()
@@ -84,7 +86,7 @@ class Train:
 
             assert train_sentences1.size(0) == train_sentences2.size(0)
 
-            softmax_out = self.model(train_sentences1, train_sentences2)
+            softmax_out = self.model(train_sentences1, sent_len1, train_sentences2, sent_len2)
             loss = self.criterion(softmax_out, train_labels)
             # Important if we are using nn.DataParallel()
             if loss.size(0) > 1:
@@ -117,7 +119,7 @@ class Train:
         num_batches = len(dev_batches)
         avg_loss = 0
         for batch_no in range(1, num_batches + 1):
-            dev_sentences1, dev_sentences2, dev_labels = helper.batch_to_tensors(dev_batches[batch_no - 1],
+            dev_sentences1, sent_len1, dev_sentences2, sent_len2, dev_labels = helper.batch_to_tensors(dev_batches[batch_no - 1],
                                                                                  self.dictionary)
             if self.config.cuda:
                 dev_sentences1 = dev_sentences1.cuda()
@@ -126,7 +128,7 @@ class Train:
 
             assert dev_sentences1.size(0) == dev_sentences2.size(0)
 
-            softmax_out = self.model(dev_sentences1, dev_sentences2)
+            softmax_out = self.model(dev_sentences1, sent_len1, dev_sentences2, sent_len2)
             loss = self.criterion(softmax_out, dev_labels)
             # Important if we are using nn.DataParallel()
             if loss.size(0) > 1:
@@ -134,3 +136,28 @@ class Train:
             avg_loss += loss.data[0]
 
         return avg_loss / num_batches
+
+    def validate_in_acc(self, dev_corpus):
+        # Turn on evaluation mode which disables dropout.
+        self.model.eval()
+
+        dev_batches = helper.batchify(dev_corpus.data, self.config.batch_size)
+        print('number of dev batches = ', len(dev_batches))
+
+        num_batches = len(dev_batches)
+        n_correct, n_total = 0, 0
+        for batch_no in range(1, num_batches + 1):
+            dev_sentences1, sent_len1, dev_sentences2, sent_len2, dev_labels = helper.batch_to_tensors(dev_batches[batch_no - 1],
+                                                                                 self.dictionary)
+            if self.config.cuda:
+                dev_sentences1 = dev_sentences1.cuda()
+                dev_sentences2 = dev_sentences2.cuda()
+                dev_labels = dev_labels.cuda()
+
+            assert dev_sentences1.size(0) == dev_sentences2.size(0)
+
+            softmax_prob = self.model(dev_sentences1, sent_len1, dev_sentences2, sent_len2)
+            n_correct += (torch.max(softmax_prob, 1)[1].view(dev_labels.size()).data == dev_labels.data).sum()
+            n_total += len(dev_batches[batch_no - 1])
+
+        return 100. * n_correct / n_total

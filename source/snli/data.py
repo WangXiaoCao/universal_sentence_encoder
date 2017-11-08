@@ -6,7 +6,7 @@
 # File Description: This script contains code to read and parse input files.
 ###############################################################################
 
-import os, helper
+import os, helper, json
 
 
 class Dictionary(object):
@@ -16,16 +16,7 @@ class Dictionary(object):
         self.word2idx = {}
         self.idx2word = []
         # Create and store three special tokens
-        self.pad_token = '<pad>'
-        self.start_token = '<s>'
-        self.end_token = '</s>'
         self.unknown_token = '<unk>'
-        self.idx2word.append(self.pad_token)
-        self.word2idx[self.pad_token] = len(self.idx2word) - 1
-        self.idx2word.append(self.start_token)
-        self.word2idx[self.start_token] = len(self.idx2word) - 1
-        self.idx2word.append(self.end_token)
-        self.word2idx[self.end_token] = len(self.idx2word) - 1
         self.idx2word.append(self.unknown_token)
         self.word2idx[self.unknown_token] = len(self.idx2word) - 1
 
@@ -45,14 +36,13 @@ class Dictionary(object):
 class Instance(object):
     """Instance that represent a sample of train/dev/test corpus."""
 
-    def __init__(self, instance_id):
-        self.id = instance_id
+    def __init__(self):
         self.sentence1 = []
         self.sentence2 = []
         self.label = ''
 
     def add_sentence(self, sentence, sentence_no, dictionary, is_test_instance):
-        words = [dictionary.start_token] + helper.tokenize_and_normalize(sentence) + [dictionary.end_token]
+        words = helper.tokenize(sentence)
         if is_test_instance:
             for i in range(len(words)):
                 if not dictionary.contains(words[i]):
@@ -82,13 +72,20 @@ class Corpus(object):
 
         samples = []
         with open(path, 'r') as f:
-            f.readline()
             for line in f:
                 tokens = line.strip().split('\t')
-                instance = Instance(int(tokens[0]))
-                instance.add_sentence(tokens[3], 1, dictionary, is_test_corpus)
-                instance.add_sentence(tokens[4], 2, dictionary, is_test_corpus)
-                instance.add_label(int(tokens[5]))
+                instance = Instance()
+                instance.add_sentence(tokens[0], 1, dictionary, is_test_corpus)
+                instance.add_sentence(tokens[1], 2, dictionary, is_test_corpus)
+
+                if tokens[2] == 'entailment':
+                    instance.add_label(0)
+                elif tokens[2] == 'neutral':
+                    instance.add_label(1)
+                elif tokens[2] == 'contradiction':
+                    instance.add_label(2)
+                else:
+                    raise ValueError('unknown label...!!!')
                 samples.append(instance)
 
         return samples

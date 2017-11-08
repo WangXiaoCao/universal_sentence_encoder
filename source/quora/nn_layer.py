@@ -19,12 +19,14 @@ class EmbeddingLayer(nn.Module):
     def __init__(self, input_size, config):
         """"Constructor of the class"""
         super(EmbeddingLayer, self).__init__()
+        self.drop = nn.Dropout(config.dropout)
         self.embedding = nn.Embedding(input_size, config.emsize)
-        # self.embedding.weight.requires_grad = False
+        if not config.emtraining:
+            self.embedding.weight.requires_grad = False
 
     def forward(self, input_variable):
         """"Defines the forward computation of the embedding layer."""
-        return self.embedding(input_variable)
+        return self.drop(self.embedding(input_variable))
 
     def init_embedding_weights(self, dictionary, embeddings_index, embedding_dim):
         """Initialize weight parameters for the embedding layer."""
@@ -62,18 +64,22 @@ class Encoder(nn.Module):
             self.rnn = nn.RNN(self.input_size, self.hidden_size, self.config.nlayers, nonlinearity=nonlinearity,
                               batch_first=True, dropout=self.config.dropout, bidirectional=self.bidirection)
 
-    def forward(self, input, hidden):
+    def forward(self, sent_variable, sent_len):
         """"Defines the forward computation of the encoder"""
-        output = input
-        for i in range(self.config.nlayers):
-            output, hidden = self.rnn(output, hidden)
-        return output, hidden
+        # Sort by length (keep idx)
+        sent_len, idx_sort = np.sort(sent_len)[::-1], np.argsort(-sent_len)
+        idx_unsort = np.argsort(idx_sort)
 
-    def init_weights(self, bsz):
-        weight = next(self.parameters()).data
-        num_directions = 2 if self.bidirection else 1
-        if self.config.model == 'LSTM':
-            return Variable(weight.new(self.config.nlayers * num_directions, bsz, self.hidden_size).zero_()), Variable(
-                weight.new(self.config.nlayers * num_directions, bsz, self.hidden_size).zero_())
-        else:
-            return Variable(weight.new(self.n_layers * num_directions, bsz, self.hidden_size).zero_())
+        idx_sort = torch.from_numpy(idx_sort).cuda() if self.config.cuda else torch.from_numpy(idx_sort)
+        sent_variable = sent_variable.index_select(0, Variable(idx_sort))
+
+        # Handling padding in Recurrent Networks
+        sent_packed = nn.utils.rnn.pack_padded_sequence(sent_variable, sent_len, batch_first=True)
+        sent_output = self.rnn(sent_packed)[0]
+        sent_output = nn.utils.rnn.pad_packed_sequence(sent_output, batch_first=True)[0]
+
+        # Un-sort by length
+        idx_unsort = torch.from_numpy(idx_unsort).cuda() if self.config.cuda else torch.from_numpy(idx_unsort)
+        sent_output = sent_output.index_select(0, Variable(idx_unsort))
+
+        return sent_output

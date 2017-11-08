@@ -9,8 +9,7 @@
 
 import re, os, pickle, string, math, time, util, torch, glob
 import numpy as np
-from nltk import wordpunct_tokenize
-from numpy.linalg import norm
+from nltk import wordpunct_tokenize, word_tokenize
 from torch.autograd import Variable
 import matplotlib as mpl
 
@@ -22,29 +21,21 @@ from collections import OrderedDict
 args = util.get_args()
 
 
-def normalize_word_embedding(v):
-    return np.array(v) / norm(np.array(v))
-
-
-def load_word_embeddings(directory, file):
+def load_word_embeddings(directory, file, dictionary):
     embeddings_index = {}
     f = open(os.path.join(directory, file))
     for line in f:
-        try:
-            values = line.split()
-            word = values[0]
-            embeddings_index[word] = normalize_word_embedding([float(x) for x in values[1:]])
-        except ValueError as e:
-            print(e)
+        word, vec = line.split(' ', 1)
+        if word in dictionary:
+            embeddings_index[word] = np.array(list(map(float, vec.split())))
     f.close()
     return embeddings_index
 
 
-def save_word_embeddings(directory, file, embeddings_index, words):
+def save_word_embeddings(directory, file, embeddings_index):
     f = open(os.path.join(directory, file), 'w')
-    for word in words:
-        if word in embeddings_index:
-            f.write(word + '\t' + '\t'.join(str(x) for x in embeddings_index[word]) + '\n')
+    for word, vec in embeddings_index.items():
+        f.write(word + ' ' + ' '.join(str(x) for x in vec) + '\n')
     f.close()
 
 
@@ -93,9 +84,22 @@ def tokenize_and_normalize(s):
     return token_list
 
 
-def initialize_out_of_vocab_words(dimension):
-    """Returns a random vector of size dimension where mean is 0 and standard deviation is 1."""
-    return np.random.normal(size=dimension)
+def tokenize(s):
+    """Tokenize string."""
+    if args.tokenize:
+        return word_tokenize(s)
+    else:
+        return s.split()
+
+
+def initialize_out_of_vocab_words(dimension, choice='random'):
+    """Returns a vector of size dimension given a specific choice."""
+    if choice == 'random':
+        """Returns a random vector of size dimension where mean is 0 and standard deviation is 1."""
+        return np.random.normal(size=dimension)
+    elif choice == 'zero':
+        """Returns a vector of zeros of size dimension."""
+        return np.zeros(size=dimension)
 
 
 def sentence_to_tensor(sentence, max_sent_length, dictionary):
@@ -111,31 +115,35 @@ def sentence_to_tensor(sentence, max_sent_length, dictionary):
 
 def batch_to_tensors(batch, dictionary):
     """Convert a list of sequences to a list of tensors."""
-    max_sent_length = 0
+    max_sent_length1, max_sent_length2 = 0, 0
     for item in batch:
-        if max_sent_length < len(item.sentence1):
-            max_sent_length = len(item.sentence1)
-        if max_sent_length < len(item.sentence2):
-            max_sent_length = len(item.sentence2)
+        if max_sent_length1 < len(item.sentence1):
+            max_sent_length1 = len(item.sentence1)
+        if max_sent_length2 < len(item.sentence2):
+            max_sent_length2 = len(item.sentence2)
 
-    all_sentences1 = torch.LongTensor(len(batch), max_sent_length)
-    all_sentences2 = torch.LongTensor(len(batch), max_sent_length)
+    all_sentences1 = torch.LongTensor(len(batch), max_sent_length1)
+    sent_len1 = np.zeros(len(batch))
+    all_sentences2 = torch.LongTensor(len(batch), max_sent_length2)
+    sent_len2 = np.zeros(len(batch))
     labels = torch.LongTensor(len(batch))
     for i in range(len(batch)):
-        all_sentences1[i] = sentence_to_tensor(batch[i].sentence1, max_sent_length, dictionary)
-        all_sentences2[i] = sentence_to_tensor(batch[i].sentence2, max_sent_length, dictionary)
+        sent_len1[i], sent_len2[i] = len(batch[i].sentence1), len(batch[i].sentence2)
+        all_sentences1[i] = sentence_to_tensor(batch[i].sentence1, max_sent_length1, dictionary)
+        all_sentences2[i] = sentence_to_tensor(batch[i].sentence2, max_sent_length2, dictionary)
         labels[i] = batch[i].label
-    return Variable(all_sentences1), Variable(all_sentences2), Variable(labels)
+    return Variable(all_sentences1), sent_len1, Variable(all_sentences2), sent_len2, Variable(labels)
 
 
 def batchify(data, bsz):
     """Transform data into batches."""
     np.random.shuffle(data)
-    nbatch = len(data) // bsz
-    # Trim off any extra elements that wouldn't cleanly fit (remainders).
-    data = data[0:nbatch * bsz]
-    # Evenly divide the data across the bsz batches.
-    batched_data = [[data[bsz * i + j] for j in range(bsz)] for i in range(nbatch)]
+    batched_data = []
+    for i in range(len(data)):
+        if i % bsz == 0:
+            batched_data.append([data[i]])
+        else:
+            batched_data[len(batched_data) - 1].append(data[i])
     return batched_data
 
 

@@ -9,6 +9,7 @@
 
 import torch
 import torch.nn as nn
+from collections import OrderedDict
 import torch.nn.functional as F
 from nn_layer import EmbeddingLayer, Encoder
 
@@ -25,33 +26,28 @@ class QuoraRNN(nn.Module):
 
         self.embedding = EmbeddingLayer(len(dictionary), self.config)
         self.embedding.init_embedding_weights(dictionary, embeddings_index, self.config.emsize)
-
         self.encoder = Encoder(self.config.emsize, self.config.nhid, self.config.bidirection, self.config)
-        self.dropout = nn.Dropout(self.config.dropout)
-        self.dense1 = nn.Linear(self.config.nhid * self.num_directions * 2, self.config.nhid * self.num_directions)
-        self.dense2 = nn.Linear(self.config.nhid * self.num_directions, 2)
 
-    def forward(self, batch_sentence1, batch_sentence2):
+        self.ffnn = nn.Sequential(OrderedDict([
+            ('dropout1', nn.Dropout(self.config.dropout_fc)),
+            ('dense1', nn.Linear(self.config.nhid * self.num_directions * 4, self.config.fc_dim)),
+            ('tanh', nn.Tanh()),
+            ('dropout2', nn.Dropout(self.config.dropout_fc)),
+            ('dense2', nn.Linear(self.config.fc_dim, self.config.fc_dim)),
+            ('tanh', nn.Tanh()),
+            ('dropout3', nn.Dropout(self.config.dropout_fc)),
+            ('dense3', nn.Linear(self.config.fc_dim, 2))
+        ]))
+
+    def forward(self, batch_sentence1, sent_len1, batch_sentence2, sent_len2):
         """"Defines the forward computation of the question classifier."""
-        embedded1 = self.dropout(self.embedding(batch_sentence1))
-        embedded2 = self.dropout(self.embedding(batch_sentence2))
+        embedded1 = self.embedding(batch_sentence1)
+        embedded2 = self.embedding(batch_sentence2)
 
-        if self.config.model == 'LSTM':
-            # For the first sentences in batch
-            encoder_hidden1, encoder_cell1 = self.encoder.init_weights(batch_sentence1.size(0))
-            output1, hidden1 = self.encoder(embedded1, (encoder_hidden1, encoder_cell1))
-            # For the second sentences in batch
-            encoder_hidden2, encoder_cell2 = self.encoder.init_weights(batch_sentence2.size(0))
-            output2, hidden2 = self.encoder(embedded2, (encoder_hidden2, encoder_cell2))
-        else:
-            # For the first sentences in batch
-            encoder_hidden1 = self.encoder.init_weights(batch_sentence1.size(0))
-            output1, hidden1 = self.encoder(embedded1, encoder_hidden1)
-            # For the second sentences in batch
-            encoder_hidden2 = self.encoder.init_weights(batch_sentence2.size(0))
-            output2, hidden2 = self.encoder(embedded2, encoder_hidden2)
-
-        assert output1.size() == output2.size()
+        # For the first sentences in batch
+        output1 = self.encoder(embedded1, sent_len1)
+        # For the second sentences in batch
+        output2 = self.encoder(embedded2, sent_len2)
 
         if self.feature_select_method == 'max':
             encoded_questions1 = torch.max(output1, 1)[0].squeeze()
@@ -63,14 +59,16 @@ class QuoraRNN(nn.Module):
             encoded_questions1 = output1[:, -1, :]
             encoded_questions2 = output2[:, -1, :]
 
+        assert encoded_questions1.size(0) == encoded_questions2.size(0)
+
         # compute angle between question representation
         angle = torch.mul(encoded_questions1, encoded_questions2)
         # compute distance between question representation
         distance = torch.abs(encoded_questions1 - encoded_questions2)
-        # combined_representation = batch_size x (hidden_size * num_directions * 2)
-        combined_representation = torch.cat((angle, distance), 1)
+        # combined_representation = batch_size x (hidden_size * num_directions * 4)
+        combined_representation = torch.cat((encoded_questions1, encoded_questions2, angle, distance), 1)
 
-        return F.log_softmax(self.dense2(F.relu(self.dense1(combined_representation))))
+        return F.log_softmax(self.ffnn(combined_representation))
 
 
 # taken from https://github.com/facebookresearch/InferSent/blob/master/models.py#L637
