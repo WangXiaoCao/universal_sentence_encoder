@@ -17,17 +17,8 @@ balanced classification with the labels entailment, contradiction, and neutral, 
   
 <p align="justify">
 The original data set contains <b>570,152</b> sentence pairs, each labeled with one of the following relationships: entailment, 
-contradiction, neutral and –, where – indicates a lack of consensus from the human annotators. Discarding the sentence pairs labeled 
-with – and keeping the remaining ones results in <b>549,367</b> pairs for training, <b>9,842</b> pairs for development and 
-<b>9,824</b> pairs for testing.
+contradiction, neutral and –, where – indicates a lack of consensus from the human annotators. Discarding the sentence pairs labeled with – and keeping the remaining ones results in <b>549,367</b> pairs for training, <b>9,842</b> pairs for development and <b>9,824</b> pairs for testing.
 <p align="justify">
-
-**Distribution of Classes in SNLI Corpus**:
-  
-<p align="center">
-  <img src="https://ai2-s2-public.s3.amazonaws.com/figures/2016-11-08/4c7e85ff37dd8b99d8f443eabd3b163ff8b71538/4-Table2-1.png" 
-  width="300"/>
-<p align="center">
   
 ### [Multi-Genre NLI Corpus, or MultiNLI](https://repeval2017.github.io/shared/)
 
