@@ -1,4 +1,4 @@
-## [Datasets]()
+## Datasets
 
 To run single task models on SNLI, Quora, Multi-NLI and AllNli model, you need to download the datasets. If you download the data from original sources, you can preprocess them using the [script.bash](https://github.com/wasiahmad/universal_sentence_encoder/blob/master/data/script.bash) script.
 
