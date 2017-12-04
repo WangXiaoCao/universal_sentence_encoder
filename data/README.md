@@ -38,30 +38,11 @@ The task dataset (called the Multi-Genre NLI Corpus, or MultiNLI) consist of <b>
 ### [Quora Question Pairs](https://data.quora.com/First-Quora-Dataset-Release-Question-Pairs)
 
 <p align="justify">
-Quora question dataset consists of over <b>400,000</b> lines of potential question duplicate pairs. Each line contains IDs for each question in the pair, the full text for each question, and a binary value that indicates whether the line truly contains a duplicate pair. Here are a few sample lines of the dataset:
+Quora question dataset consists of over <b>400,000</b> lines of potential question duplicate pairs. Each line contains IDs for each question in the pair, the full text for each question, and a binary value that indicates whether the line truly contains a duplicate pair. Quora dataset split from the paper - [BiMPM: Bilateral Multi-Perspective Matching for Natural Language Sentences](https://github.com/zhiguowang/BiMPM) can be found [here](https://drive.google.com/file/d/0B0PlTAo--BnaQWlsZl9FZ3l1c28/view).
 <p align="justify">
-
-<p align="center">
-<br>
-<img src="https://qph.ec.quoracdn.net/main-qimg-ea50c7a005eb7750af0b53b07c8caa60" width="90%"/>
-<p align="center">
-
-Quora dataset split from the paper - [BiMPM: Bilateral Multi-Perspective Matching for Natural Language Sentences](https://github.com/zhiguowang/BiMPM) can be found [here](https://drive.google.com/file/d/0B0PlTAo--BnaQWlsZl9FZ3l1c28/view).
 
 ### [CQADupStack](http://nlp.cis.unimelb.edu.au/resources/cqadupstack/)
 
 <p align="justify">
-CQADupStack is a benchmark dataset for community question-answering (cQA) research. Descriptive stat of the dataset is given in the following figure.
+CQADupStack is a benchmark dataset for community question-answering (cQA) research. More details can be found in the paper - <a href="http://dl.acm.org/citation.cfm?id=2838934">CQADupStack: A Benchmark Data Set for Community Question-Answering Research</a>.
 <p align="justify">
-
-<p align="center">
-<img src="http://imgur.com/0YPdEEC.png" width="75%"/>
-<p align="center">
-
-Adapted from the paper - [CQADupStack: A Benchmark Data Set for Community Question-Answering Research](http://dl.acm.org/citation.cfm?id=2838934).
-
-
-
-
-
-
