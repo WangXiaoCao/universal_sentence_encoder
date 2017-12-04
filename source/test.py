@@ -61,7 +61,7 @@ if __name__ == "__main__":
     model = SentenceClassifier(dictionary, embeddings_index, args)
     if args.cuda:
         model = model.cuda()
-    helper.load_model_states_from_checkpoint(model, args.save_path + 'model_best.pth.tar', 'state_dict')
+    helper.load_model_states_from_checkpoint(model, args.save_path + 'model_best.pth.tar', 'state_dict', args.cuda)
     print('vocabulary size = ', len(dictionary))
 
     task_names = ['snli', 'multinli'] if args.task == 'allnli' else [args.task]

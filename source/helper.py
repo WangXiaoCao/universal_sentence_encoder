@@ -44,10 +44,13 @@ def save_checkpoint(state, filename='./checkpoint.pth.tar'):
     torch.save(state, filename)
 
 
-def load_model_states_from_checkpoint(model, filename, tag):
+def load_model_states_from_checkpoint(model, filename, tag, from_gpu=True):
     """Load model states from a previously saved checkpoint."""
     assert os.path.exists(filename)
-    checkpoint = torch.load(filename)
+    if from_gpu:
+        checkpoint = torch.load(filename)
+    else:
+        checkpoint = torch.load(filename, map_location=lambda storage, loc: storage)
     model.load_state_dict(checkpoint[tag])
 
 
