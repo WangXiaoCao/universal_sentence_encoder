@@ -1,15 +1,16 @@
 ###############################################################################
 # Author: Wasi Ahmad
-# Project: Quora Duplicate Question Detection
+# Project: Sentence pair classification
 # Date Created: 7/25/2017
 #
 # File Description: This script provides general purpose utility functions that
 # are required at different steps in the experiments.
 ###############################################################################
 
-import re, os, pickle, string, math, time, util, torch, glob
+import re, os, pickle, string, math, time, torch, glob, inspect
 import numpy as np
 from nltk import wordpunct_tokenize, word_tokenize
+from torch import optim
 from torch.autograd import Variable
 import matplotlib as mpl
 
@@ -17,8 +18,6 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from collections import OrderedDict
-
-args = util.get_args()
 
 
 def load_word_embeddings(directory, file, dictionary):
@@ -52,6 +51,49 @@ def load_model_states_from_checkpoint(model, filename, tag):
     model.load_state_dict(checkpoint[tag])
 
 
+def get_optimizer(s):
+    """
+    Parse optimizer parameters.
+    Input should be of the form:
+        - "sgd,lr=0.01"
+        - "adagrad,lr=0.1,lr_decay=0.05"
+    """
+    if "," in s:
+        method = s[:s.find(',')]
+        optim_params = {}
+        for x in s[s.find(',') + 1:].split(','):
+            split = x.split('=')
+            assert len(split) == 2
+            assert re.match("^[+-]?(\d+(\.\d*)?|\.\d+)$", split[1]) is not None
+            optim_params[split[0]] = float(split[1])
+    else:
+        method = s
+        optim_params = {}
+
+    if method == 'adadelta':
+        optim_fn = optim.Adadelta
+    elif method == 'adagrad':
+        optim_fn = optim.Adagrad
+    elif method == 'adam':
+        optim_fn = optim.Adam
+    elif method == 'rmsprop':
+        optim_fn = optim.RMSprop
+    elif method == 'sgd':
+        optim_fn = optim.SGD
+        assert 'lr' in optim_params
+    else:
+        raise Exception('Unknown optimization method: "%s"' % method)
+
+    # check that we give good parameters to the optimizer
+    expected_args = list(inspect.signature(optim_fn.__init__).parameters.keys())
+    assert expected_args[:2] == ['self', 'params']
+    if not all(k in expected_args[2:] for k in optim_params.keys()):
+        raise Exception('Unexpected parameters: expected "%s", got "%s"' % (
+            str(expected_args[2:]), str(optim_params.keys())))
+
+    return optim_fn, optim_params
+
+
 def load_model_states_without_dataparallel(model, filename, tag):
     """Load a previously saved model states."""
     assert os.path.exists(filename)
@@ -76,30 +118,22 @@ def load_object(filename):
     return obj
 
 
-def tokenize_and_normalize(s):
-    """Tokenize and normalize string."""
-    token_list = []
-    tokens = wordpunct_tokenize(s.lower())
-    token_list.extend([x for x in tokens if not re.fullmatch('[' + string.punctuation + ']+', x)])
-    return token_list
-
-
-def tokenize(s):
+def tokenize(s, tokenize):
     """Tokenize string."""
-    if args.tokenize:
+    if tokenize:
         return word_tokenize(s)
     else:
         return s.split()
 
 
-def initialize_out_of_vocab_words(dimension, choice='random'):
+def initialize_out_of_vocab_words(dimension, choice='zero'):
     """Returns a vector of size dimension given a specific choice."""
     if choice == 'random':
         """Returns a random vector of size dimension where mean is 0 and standard deviation is 1."""
         return np.random.normal(size=dimension)
     elif choice == 'zero':
         """Returns a vector of zeros of size dimension."""
-        return np.zeros(size=dimension)
+        return np.zeros(shape=dimension)
 
 
 def sentence_to_tensor(sentence, max_sent_length, dictionary):
@@ -108,8 +142,6 @@ def sentence_to_tensor(sentence, max_sent_length, dictionary):
         word = sentence[i]
         if word in dictionary.word2idx:
             sen_rep[i] = dictionary.word2idx[word]
-        else:
-            sen_rep[i] = dictionary.word2idx[dictionary.unknown_token]
     return sen_rep
 
 
@@ -149,7 +181,7 @@ def batchify(data, bsz):
 
 def save_plot(points, filepath, filetag, epoch):
     """Generate and save the plot"""
-    path_prefix = os.path.join(filepath, filetag + '_loss_plot_')
+    path_prefix = os.path.join(filepath, filetag)
     path = path_prefix + 'epoch_{}.png'.format(epoch)
     fig, ax = plt.subplots()
     loc = ticker.MultipleLocator(base=0.2)  # this locator puts ticks at regular intervals

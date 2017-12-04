@@ -1,6 +1,6 @@
 ###############################################################################
 # Author: Wasi Ahmad
-# Project: Quora Duplicate Question Detection
+# Project: Sentence pair classification
 # Date Created: 7/25/2017
 #
 # File Description: This is the main script from where all experimental
@@ -8,8 +8,7 @@
 ###############################################################################
 
 import util, data, helper, train, torch, os, numpy
-from torch import optim
-from question_classifier import QuoraRNN, ConvNetEncoder
+from classifier import SentenceClassifier
 
 args = util.get_args()
 # if output directory doesn't exist, create it
@@ -30,29 +29,41 @@ if torch.cuda.is_available():
 ###############################################################################
 
 dictionary = data.Dictionary()
-train_corpus = data.Corpus(args.data + 'quora/', 'train.txt', dictionary)
+train_corpus = data.Corpus(dictionary)
+dev_corpus = data.Corpus(dictionary)
+test_corpus = data.Corpus(dictionary)
+
+task_names = ['snli', 'multinli'] if args.task == 'allnli' else [args.task]
+for task in task_names:
+    train_corpus.parse(args.data + task + '/', 'train.txt', args.tokenize, args.max_example)
+    if task == 'multinli':
+        dev_corpus.parse(args.data + task + '/', 'dev_matched.txt', args.tokenize)
+        dev_corpus.parse(args.data + task + '/', 'dev_mismatched.txt', args.tokenize)
+        test_corpus.parse(args.data + task + '/', 'test_matched.txt', args.tokenize)
+        test_corpus.parse(args.data + task + '/', 'test_mismatched.txt', args.tokenize)
+    else:
+        dev_corpus.parse(args.data + task + '/', 'dev.txt', args.tokenize)
+        test_corpus.parse(args.data + task + '/', 'test.txt', args.tokenize)
+
 print('train set size = ', len(train_corpus.data))
-dev_corpus = data.Corpus(args.data + 'quora/', 'dev.txt', dictionary, True)
 print('development set size = ', len(dev_corpus.data))
+print('test set size = ', len(test_corpus.data))
 print('vocabulary size = ', len(dictionary))
 
 # save the dictionary object to use during testing
-helper.save_object(dictionary, args.data + 'dictionary.p')
+helper.save_object(dictionary, args.save_path + 'dictionary.p')
 
-# embeddings_index = helper.load_word_embeddings(args.word_vectors_directory, args.word_vectors_file, dictionary.word2idx)
-# helper.save_word_embeddings(args.word_vectors_directory, 'glove.840B.300d.quora.txt', embeddings_index)
-
-embeddings_index = helper.load_word_embeddings(args.word_vectors_directory, 'glove.840B.300d.quora.txt', dictionary.word2idx)
+embeddings_index = helper.load_word_embeddings(args.word_vectors_directory, args.word_vectors_file, dictionary.word2idx)
 print('number of OOV words = ', len(dictionary) - len(embeddings_index))
 
 # ###############################################################################
 # # Build the model
 # ###############################################################################
 
-# model = ConvNetEncoder(dictionary, embeddings_index, args)
-model = QuoraRNN(dictionary, embeddings_index, args, select_method='max')
-optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), args.lr)
-best_loss = -1
+model = SentenceClassifier(dictionary, embeddings_index, args)
+optim_fn, optim_params = helper.get_optimizer(args.optimizer)
+optimizer = optim_fn(filter(lambda p: p.requires_grad, model.parameters()), **optim_params)
+best_acc = 0
 
 # for training on multiple GPUs. use CUDA_VISIBLE_DEVICES=0,1 to specify which GPUs to use
 if 'CUDA_VISIBLE_DEVICES' in os.environ:
@@ -67,7 +78,7 @@ if args.resume:
         print("=> loading checkpoint '{}'".format(args.resume))
         checkpoint = torch.load(args.resume)
         args.start_epoch = checkpoint['epoch']
-        best_loss = checkpoint['best_loss']
+        best_acc = checkpoint['best_acc']
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         print("=> loaded checkpoint '{}' (epoch {})"
@@ -79,5 +90,5 @@ if args.resume:
 # # Train the model
 # ###############################################################################
 
-train = train.Train(model, optimizer, dictionary, embeddings_index, args, best_loss)
+train = train.Train(model, optimizer, dictionary, embeddings_index, args, best_acc)
 train.train_epochs(train_corpus, dev_corpus, args.start_epoch, args.epochs)

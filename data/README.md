@@ -1,3 +1,9 @@
+## [Datasets]()
+
+To run single task models on SNLI, Quora, Multi-NLI and AllNli model, you need to download the datasets. If you download the data from original sources, you can preprocess them using the [script.bash](https://github.com/wasiahmad/universal_sentence_encoder/blob/master/data/script.bash) script.
+
+You can directly download the preprocessed datasets from [here](https://drive.google.com/file/d/1a0W8ivmMbHKCn-azBdZS_HxEnGT1CY3f/view?usp=sharing).
+
 
 ## List of dataset to train universal sentence encoder
 
@@ -53,6 +59,9 @@ CQADupStack is a benchmark dataset for community question-answering (cQA) resear
 <p align="center">
 
 Adapted from the paper - [CQADupStack: A Benchmark Data Set for Community Question-Answering Research](http://dl.acm.org/citation.cfm?id=2838934).
+
+
+
 
 
 

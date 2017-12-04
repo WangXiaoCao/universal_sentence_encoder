@@ -1,6 +1,6 @@
 ###############################################################################
 # Author: Wasi Ahmad
-# Project: Quora Duplicate Question Detection
+# Project: Sentence pair classification
 # Date Created: 7/25/2017
 #
 # File Description: This script contains code related to the additional neural
@@ -10,6 +10,7 @@
 import helper, torch
 import torch.nn as nn
 import numpy as np
+from collections import OrderedDict
 from torch.autograd import Variable
 
 
@@ -19,14 +20,18 @@ class EmbeddingLayer(nn.Module):
     def __init__(self, input_size, config):
         """"Constructor of the class"""
         super(EmbeddingLayer, self).__init__()
-        self.drop = nn.Dropout(config.dropout)
-        self.embedding = nn.Embedding(input_size, config.emsize)
-        if not config.emtraining:
+        if config.emtraining:
+            self.embedding = nn.Sequential(OrderedDict([
+                ('embedding', nn.Embedding(input_size, config.emsize)),
+                ('dropout', nn.Dropout(config.dropout))
+            ]))
+        else:
+            self.embedding = nn.Embedding(input_size, config.emsize)
             self.embedding.weight.requires_grad = False
 
     def forward(self, input_variable):
         """"Defines the forward computation of the embedding layer."""
-        return self.drop(self.embedding(input_variable))
+        return self.embedding(input_variable)
 
     def init_embedding_weights(self, dictionary, embeddings_index, embedding_dim):
         """Initialize weight parameters for the embedding layer."""
@@ -37,7 +42,10 @@ class EmbeddingLayer(nn.Module):
             else:
                 pretrained_weight[i] = helper.initialize_out_of_vocab_words(embedding_dim)
         # pretrained_weight is a numpy matrix of shape (num_embeddings, embedding_dim)
-        self.embedding.weight.data.copy_(torch.from_numpy(pretrained_weight))
+        if isinstance(self.embedding, nn.Sequential):
+            self.embedding[0].weight.data.copy_(torch.from_numpy(pretrained_weight))
+        else:
+            self.embedding.weight.data.copy_(torch.from_numpy(pretrained_weight))
 
 
 class Encoder(nn.Module):
